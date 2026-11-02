@@ -9,7 +9,7 @@
 [![fzf](https://img.shields.io/badge/fzf-required-f59e0b?style=flat-square)](https://github.com/junegunn/fzf)
 [![jq](https://img.shields.io/badge/jq-required-1f2937?style=flat-square)](https://jqlang.org)
 
-> Inspired by [ThePrimeagen](https://github.com/theprimeagen/tmux-sessionizer).
+> Inspired by [ThePrimeagen's tmux sessionizer](https://github.com/theprimeagen/tmux-sessionizer).
 
 ## ⚡ At a Glance
 
