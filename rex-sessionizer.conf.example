@@ -1,0 +1,45 @@
+# Example rex-sessionizer configuration.
+#
+# Copy this to ~/.config/rex/rex-sessionizer.conf, or put a
+# rex-sessionizer.conf in a project directory to override settings there.
+#
+# This file is sourced by bash, so arrays and command substitution work.
+
+# Directories to search for projects. Each entry is searched to
+# REX_SESSIONIZER_MAX_DEPTH, or use PATH:DEPTH for one entry.
+REX_SESSIONIZER_SEARCH_PATHS=(
+  ~/code
+  ~/personal
+  ~/personal/dev/env/.config
+)
+
+# Additional search paths appended to the list above.
+# REX_SESSIONIZER_EXTRA_SEARCH_PATHS=(
+#   ~/work
+# )
+
+# Default depth for entries without a :DEPTH suffix.
+REX_SESSIONIZER_MAX_DEPTH=1
+
+# Commands available with -s/--session INDEX. They run through `sh -c` in the
+# current directory, in a new window or (with --vsplit/--hsplit) a split.
+REX_SESSIONIZER_COMMANDS=(
+  "lazygit"
+  "nvim"
+  "htop"
+)
+
+# Rex app client to switch when more than one app is connected. Use a label
+# from `rex client ls`, or a client ID.
+# REX_SESSIONIZER_CLIENT="MacBook Pro M1"
+
+# Source .rex-sessionizer (local, then ~/.rex-sessionizer) in new sessions.
+REX_SESSIONIZER_HYDRATE=1
+
+# Set to 0 to create/select sessions without switching the app.
+REX_SESSIONIZER_SWITCH=1
+
+# Logging. Values: echo, file, or empty for no logging.
+# REX_SESSIONIZER_LOG=file
+# REX_SESSIONIZER_LOG_FILE=~/.local/share/rex-sessionizer/rex-sessionizer.log
+
