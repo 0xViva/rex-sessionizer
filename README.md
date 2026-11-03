@@ -3,7 +3,7 @@
 **Fuzzy project switching for Rex power users.**
 
 [![License](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
-![Version](https://img.shields.io/badge/version-1.1.0-3b82f6?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.2.0-3b82f6?style=flat-square)
 [![Rex](https://img.shields.io/badge/built%20for-Rex-6d28d9?style=flat-square)](https://www.superlogical.com/rex/docs/)
 ![Bash](https://img.shields.io/badge/Bash-3.2%2B-4eaa25?logo=gnubash&logoColor=white&style=flat-square)
 [![fzf](https://img.shields.io/badge/fzf-required-f59e0b?style=flat-square)](https://github.com/junegunn/fzf)
@@ -38,7 +38,7 @@ first-class operation.
 | --- | --- |
 | ⚡ **Fuzzy context switch** | Search sessions and projects in one picker. |
 | 📁 **Directory → session** | Turn a project dir into a named Rex session. |
-| 🪟 **Reusable command panes** | `-s INDEX` reuses cached windows and splits. |
+| 🪟 **Reusable command panes** | `-s INDEX` reuses windows and splits. |
 | 🎯 **Client-aware handoff** | Picks the sole app client, or the one from `-C`. |
 | 🌐 **Multi-server aware** | `-S/--server` targets another Rex host. |
 | 🧪 **Safe to inspect** | `--list` and `--dry-run` change nothing. |
@@ -153,11 +153,11 @@ rex-sessionizer -s 0 -t alpha     # run in the "alpha" session instead
 
 - `-s` normally needs to be run inside a Rex terminal (`REX_SESSION`), so Rex
   knows which session to use. `-t/--target` removes that limitation.
-- A pane is reused only while it is still alive. If the cache is cleared, the
-  window/block is found again by its label instead of creating a duplicate.
-- The cache key includes the command and working directory. If you edit a
-  command, the next `-s` creates a fresh pane rather than silently reusing the
-  old one.
+- A pane is reused only while it is still alive. Panes are found by a label
+  that encodes the command index, the command, and the working directory; no
+  cache has to be kept in sync.
+- If you edit a command or change directory, the next `-s` creates a fresh pane
+  rather than silently reusing the old one.
 - Set `REX_SESSIONIZER_KEEP_OPEN=1` if you want one-shot commands (for example
   `go test ./...`) to leave their pane open after they exit. The default is `0`,
   matching the original behavior: one-shot panes disappear and are recreated
@@ -274,7 +274,7 @@ starting a shell prompt. Disable it with `--no-hydrate` or
 | `session target ... is ambiguous` | Two sessions share a label. Rename one, or pass a full session ID. |
 | `-s` says `REX_SESSION is not set` | Run it inside a Rex terminal, or pass `-t/--target`. |
 | The picker only shows sessions | Every configured search path was missing, pruned, or hidden. Check `--list` and `REX_SESSIONIZER_INCLUDE_HIDDEN`. |
-| An old command pane is reused | The cache key includes the command and cwd; if you expected a new pane, check the config actually changed and that the old pane's label matches. |
+| An old command pane is reused | The pane label includes the command and cwd; if you expected a new pane, check that the config actually changed. |
 | No logs | Set `REX_SESSIONIZER_LOG=echo` or `REX_SESSIONIZER_LOG=file`. |
 
 ## 📄 License & Contact
