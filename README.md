@@ -11,6 +11,8 @@
 
 > Inspired by [ThePrimeagen's tmux sessionizer](https://github.com/theprimeagen/tmux-sessionizer).
 
+https://github.com/user-attachments/assets/5502d208-934b-4634-9e69-7d0c74adafbd
+
 ## ⚡ At a Glance
 
 `rex-sessionizer` is a keyboard-first project and session switcher for Rex.
