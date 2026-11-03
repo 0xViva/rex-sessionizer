@@ -1,5 +1,7 @@
 # Example rex-sessionizer configuration.
 #
+# Rex is the terminal at https://www.superlogical.com/rex/docs/ .
+#
 # Copy this to ~/.config/rex/rex-sessionizer.conf, or put a
 # rex-sessionizer.conf in a project directory to override settings there.
 #

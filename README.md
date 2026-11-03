@@ -4,7 +4,7 @@
 
 [![License](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
 ![Version](https://img.shields.io/badge/version-1.0.0-3b82f6?style=flat-square)
-[![Rex](https://img.shields.io/badge/built%20for-Rex-6d28d9?style=flat-square)](https://www.superlogical.com/rex/docs/automate/cli)
+[![Rex](https://img.shields.io/badge/built%20for-Rex-6d28d9?style=flat-square)](https://www.superlogical.com/rex/docs/)
 ![Bash](https://img.shields.io/badge/Bash-3.2%2B-4eaa25?logo=gnubash&logoColor=white&style=flat-square)
 [![fzf](https://img.shields.io/badge/fzf-required-f59e0b?style=flat-square)](https://github.com/junegunn/fzf)
 [![jq](https://img.shields.io/badge/jq-required-1f2937?style=flat-square)](https://jqlang.org)
@@ -22,6 +22,12 @@ prompt, then hands the selected context to the Rex app.
 Built for people who live in the terminal and treat context switching as a
 first-class operation.
 
+> **What is Rex?** Throughout this project, **Rex** means the terminal at
+> [superlogical.com/rex](https://www.superlogical.com/rex/docs/) — the
+> multiplexer for all work, with a macOS app and Linux/FreeBSD servers, plus
+> the `rex` CLI used here to control it. This is not the Rex programming
+> language or any other tool named Rex.
+
 > **Power move:** `rex-sessionizer -s 0 --vsplit` reuses a command pane beside
 > your current block instead of spawning duplicates.
 
@@ -38,7 +44,11 @@ first-class operation.
 
 ### 1 · Dependencies
 
-Rex, `fzf`, and `jq`.
+- [**Rex**](https://www.superlogical.com/rex/docs/) — the terminal this tool
+  drives (install the macOS app, or a Linux/FreeBSD server, and make sure the
+  `rex` CLI is on your `PATH`)
+- **`fzf`** — fuzzy finder for the picker
+- **`jq`** — parses Rex's JSON output
 
 ### 2 · Install
 
@@ -60,7 +70,8 @@ rex-sessionizer
 ```
 
 > Ensure `~/.local/bin` is on your `PATH`. Session switching requires a running
-> Rex server and an app client with **Remote Control** enabled.
+> [Rex](https://www.superlogical.com/rex/docs/) server and a Rex app client with
+> **Remote Control** enabled.
 
 ## ⌨️ Shell Keybindings
 

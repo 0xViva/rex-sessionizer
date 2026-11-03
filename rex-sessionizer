@@ -86,6 +86,9 @@ Usage: rex-sessionizer [OPTIONS] [PATH|SESSION]
 Pick a project directory with fzf and open (or create) the matching Rex
 session. With no arguments, the picker also lists existing Rex sessions.
 
+Rex is the terminal at https://www.superlogical.com/rex/docs/ — this tool
+drives it through the rex CLI.
+
 Options:
   -h, --help             Show this help
   -v, --version          Show the version
