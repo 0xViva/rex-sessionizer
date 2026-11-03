@@ -46,6 +46,13 @@ MAX_DEPTH="${REX_SESSIONIZER_MAX_DEPTH:-1}"
 [[ "$MAX_DEPTH" =~ ^[0-9]+$ ]] ||
     die "REX_SESSIONIZER_MAX_DEPTH must be a non-negative integer"
 
+# Popup rectangle as fractions of the window: x y w h.
+if [[ -n "${REX_SESSIONIZER_POPUP_BOUNDS+x}" ]]; then
+    POPUP_BOUNDS=("${REX_SESSIONIZER_POPUP_BOUNDS[@]}")
+else
+    POPUP_BOUNDS=(0.1 0.1 0.8 0.8)
+fi
+
 is_true() {
     case "${1:-}" in
     1 | true | TRUE | True | yes | YES | Yes | on | ON | On) return 0 ;;
@@ -113,6 +120,8 @@ Options:
   -C, --client CLIENT    Rex app client to switch (label or ID)
   -S, --server SERVER    Rex server to use (host label or address)
       --list             List sessions and project directories, then exit
+      --popup            Open the picker as a floating layer in the current
+                         Rex window (run this inside Rex)
       --dry-run          Show what would happen without changing anything
       --no-switch        Create/select the session, but don't switch the app
       --no-hydrate       Don't source .rex-sessionizer in a new session
@@ -125,6 +134,7 @@ Configuration:
   REX_SESSIONIZER_EXTRA_SEARCH_PATHS=(...)
   REX_SESSIONIZER_MAX_DEPTH=1
   REX_SESSIONIZER_EXCLUDES=(.git node_modules)
+  REX_SESSIONIZER_POPUP_BOUNDS=(0.1 0.1 0.8 0.8)
   REX_SESSIONIZER_COMMANDS=("lazygit" "nvim" "htop")
   REX_SESSIONIZER_CLIENT="MacBook Pro M1"
   REX_SESSIONIZER_SERVER="studio"
@@ -160,6 +170,7 @@ session_cmd=""
 user_selected=""
 split_type=""
 LIST_ONLY=0
+POPUP=0
 DRY_RUN=0
 rc=0
 
@@ -200,6 +211,7 @@ while [[ "$#" -gt 0 ]]; do
         shift
         ;;
     --list) LIST_ONLY=1 ;;
+    --popup) POPUP=1 ;;
     --dry-run) DRY_RUN=1 ;;
     --no-switch) SWITCH=0 ;;
     --no-hydrate) HYDRATE=0 ;;
@@ -228,6 +240,11 @@ fi
 
 if [[ "$LIST_ONLY" == "1" && -n "$session_idx" ]]; then
     die "--list cannot be combined with -s/--session"
+fi
+
+if [[ "$POPUP" == "1" ]] &&
+    [[ -n "$session_idx" || -n "$user_selected" || -n "$split_type" || "$LIST_ONLY" == "1" ]]; then
+    die "--popup only wraps the picker; don't combine it with -s, --list, --vsplit/--hsplit, or a PATH/SESSION"
 fi
 
 if [[ -n "$session_idx" ]]; then
@@ -262,6 +279,80 @@ sanity_check() {
 
 sanity_check_fzf() {
     command -v fzf >/dev/null 2>&1 || die "fzf is not installed (or not on PATH)"
+}
+
+require_search_paths() {
+    ((${#SEARCH_PATHS[@]})) && return 0
+
+    printf 'rex-sessionizer: no project search paths configured.\n\n' >&2
+    printf 'Create %s with the directories to search:\n\n' "$CONFIG_FILE" >&2
+    printf '  REX_SESSIONIZER_SEARCH_PATHS=(~/code ~/src)\n\n' >&2
+    printf 'See rex-sessionizer.conf.example for all options.\n' >&2
+    exit 1
+}
+
+# Absolute path of this script, so a popup can re-run it directly.
+self_path() {
+    local self="${BASH_SOURCE[0]}"
+
+    if [[ "$self" != */* ]]; then
+        self=$(command -v -- "$self" 2>/dev/null) || return 1
+    fi
+
+    (cd -- "$(dirname -- "$self")" &&
+        printf '%s/%s\n' "$(pwd -P)" "$(basename -- "$self")")
+}
+
+# Open the picker in a floating layer over the current window. The layer has
+# to exist before fzf starts, so this is a separate mode that re-runs this
+# script inside the layer; use it from a shell or editor binding inside Rex.
+open_popup() {
+    local session_id="${REX_SESSION:-}" block_id="${REX_BLOCK:-}" window_id=""
+    local self bounds_json args_json output
+
+    [[ -n "$session_id" ]] ||
+        die "--popup must run inside a Rex terminal (REX_SESSION is not set)"
+
+    ((${#POPUP_BOUNDS[@]} == 4)) ||
+        die "REX_SESSIONIZER_POPUP_BOUNDS must contain four numbers: x y w h"
+
+    bounds_json=$(printf '%s\n' "${POPUP_BOUNDS[@]}" |
+        jq -sR 'split("\n") | map(select(length > 0) | tonumber)') ||
+        die "REX_SESSIONIZER_POPUP_BOUNDS must contain four numbers: x y w h"
+    (($(printf '%s\n' "$bounds_json" | jq 'length') == 4)) ||
+        die "REX_SESSIONIZER_POPUP_BOUNDS must contain four numbers: x y w h"
+
+    self=$(self_path) || die "could not resolve the path to this script"
+
+    if [[ -n "$block_id" ]]; then
+        window_id=$(rex block inspect -s "$session_id" "$block_id" --json 2>/dev/null |
+            jq -r '.block.window_id // empty' 2>/dev/null)
+    fi
+
+    args_json=$(jq -n \
+        --arg session_id "$session_id" \
+        --argjson bounds "$bounds_json" \
+        --arg command "$self" \
+        --arg cwd "$PWD" \
+        '{session_id: $session_id, bounds: $bounds, focus: true,
+          layout: {block: {flavor: "com.superlogical.terminal.shell",
+            options: {command: [$command], cwd: $cwd}}}}') ||
+        die "could not build the popup request"
+
+    [[ -z "$window_id" ]] ||
+        args_json=$(printf '%s\n' "$args_json" |
+            jq --arg w "$window_id" '. + {window_id: $w}')
+
+    if [[ "$DRY_RUN" == "1" ]]; then
+        printf '%s\n' "$args_json"
+        return 0
+    fi
+
+    if ! output=$(rex api call -s "$session_id" session.new_layer "$args_json" 2>&1); then
+        printf '%s\n' "$output" >&2
+        die "could not open the sessionizer popup"
+    fi
+    log "opened popup layer in $session_id"
 }
 
 count_nonempty() {
@@ -618,6 +709,12 @@ handle_pane() {
 
 sanity_check
 
+if [[ "$POPUP" == "1" ]]; then
+    require_search_paths
+    open_popup
+    exit 0
+fi
+
 # Path-cache entries belong to one server, so scope them by endpoint.
 if [[ -n "$SERVER" ]]; then
     endpoint=$(command rex -S "$SERVER" whoami --json 2>/dev/null |
@@ -641,13 +738,7 @@ fi
 
 # The picker (and --list) discover projects, so they need configured paths.
 if [[ "$LIST_ONLY" == "1" || -z "$user_selected" ]]; then
-    ((${#SEARCH_PATHS[@]})) || {
-        printf 'rex-sessionizer: no project search paths configured.\n\n' >&2
-        printf 'Create %s with the directories to search:\n\n' "$CONFIG_FILE" >&2
-        printf '  REX_SESSIONIZER_SEARCH_PATHS=(~/code ~/src)\n\n' >&2
-        printf 'See rex-sessionizer.conf.example for all options.\n' >&2
-        exit 1
-    }
+    require_search_paths
 fi
 
 if [[ "$LIST_ONLY" == "1" ]]; then

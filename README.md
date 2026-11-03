@@ -45,12 +45,14 @@ first-class operation.
 
 ## 🚀 Quick Start
 
+One executable, one config file, and one Rex binding. Nothing needs to be
+sourced from your shell or arranged in a dotfiles repo.
+
 ### 1 · Dependencies
 
-- [**Rex**](https://www.superlogical.com/rex/docs/) — the terminal this tool
-  drives. Install the macOS app (or a Linux/FreeBSD server) and make sure the
-  `rex` CLI is on your `PATH`. The app client needs **Remote Control** enabled
-  for session switching.
+- [**Rex**](https://www.superlogical.com/rex/docs/) — install the app or a
+  Linux/FreeBSD server and make sure the `rex` CLI is on your `PATH`. The app
+  client needs **Remote Control** enabled for session switching.
 - **`fzf`** — fuzzy finder for the picker
 - **`jq`** — parses Rex's JSON output
 
@@ -65,6 +67,10 @@ sudo apt install fzf jq
 sudo dnf install fzf jq
 ```
 
+The Rex binding runs the picker on the machine hosting the Rex server, so
+`rex`, `rex-sessionizer`, `fzf`, and `jq` must be installed there too. For a
+local server, that is the same machine.
+
 ### 2 · Install
 
 ```sh
@@ -74,54 +80,118 @@ mkdir -p ~/.local/bin
 install -m 755 rex-sessionizer ~/.local/bin/
 ```
 
-Ensure `~/.local/bin` is on your `PATH`:
+`~/.local/bin` is a common choice; any directory on your `PATH` works. If
+`~/.local/bin` is not already on your `PATH`, add it in your shell's startup
+file (for example, `export PATH="$HOME/.local/bin:$PATH"` in bash/zsh, or
+`fish_add_path ~/.local/bin` in fish). Then verify:
 
 ```sh
-# fish
-fish_add_path ~/.local/bin
-
-# zsh / bash
-export PATH="$HOME/.local/bin:$PATH"
+rex-sessionizer --version
 ```
 
-### 3 · Configure (required)
+With a remote Rex server, install the script on that machine too.
 
-There are no built-in search paths: the picker and `--list` need
-`REX_SESSIONIZER_SEARCH_PATHS` to be set. Create the config and point it at
-**your** project directories:
+### 3 · Configure project directories
+
+The picker needs at least one search path. Create the config file next to
+Rex's `init.lua` (skip the `cat` if the file already exists):
 
 ```sh
-mkdir -p ~/.config/rex
-cat > ~/.config/rex/rex-sessionizer.conf <<'EOF'
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/rex"
+mkdir -p "$config_dir"
+cat > "$config_dir/rex-sessionizer.conf" <<'EOF'
 REX_SESSIONIZER_SEARCH_PATHS=(
-  ~/code
-  ~/src
+    ~/code
 )
 EOF
-$EDITOR ~/.config/rex/rex-sessionizer.conf
 ```
 
-If you cloned the repo, `rex-sessionizer.conf.example` has every option.
+Replace `~/code` with the directory or directories that contain your
+projects. Paths that do not exist are skipped. If `XDG_CONFIG_HOME` is unset,
+the file is `~/.config/rex/rex-sessionizer.conf`. With a remote Rex server,
+create this file on the server machine.
 
-> The paths above are placeholders. If none of them exist, the picker will
-> list only Rex sessions and no project directories.
-
-Without a config file you can still pass a directory or session explicitly
-(`rex-sessionizer ~/code/my-project`), and `-s/--session` still works inside a
-Rex terminal. Only project discovery requires the search paths.
-
-### 4 · Run
+Check what the picker will see:
 
 ```sh
-rex-sessionizer
+rex-sessionizer --list
 ```
 
-To verify the install without changing anything:
+`--list` prints Rex sessions and discovered project directories without
+changing anything. Without a config file you can still pass a directory or a
+session explicitly (`rex-sessionizer ~/code/my-project`); only project
+discovery needs search paths.
+
+### 4 · Bind it in Rex
+
+Add this to Rex's `init.lua` (`~/.config/rex/init.lua`, or
+`$XDG_CONFIG_HOME/rex/init.lua` when `XDG_CONFIG_HOME` is set). The server
+reads this file, so for a remote server edit it on the server machine:
+
+```lua
+rex.action{
+  name  = "sessionizer",
+  title = "Open Rex Sessionizer",
+  run   = function()
+    local layer, err = rex.session.new_layer{
+      bounds = { 0.1, 0.1, 0.8, 0.8 },
+      focus  = true,
+      layout = rex.layout.block{
+        flavor  = "com.superlogical.terminal.shell",
+        options = { command = { "rex-sessionizer" } },
+      },
+    }
+    if err ~= nil then error(err, 0) end
+    return { layer_id = layer.layer_id }
+  end,
+}
+
+rex.bind("ctrl+shift+p", "sessionizer")
+```
+
+`ctrl+shift+p` is an example; use any free chord. Rex accepts `cmd`, `ctrl`,
+`alt`, and `shift`, plus sequences such as `ctrl+a>f`. See the
+[Keyboard Shortcuts](https://www.superlogical.com/rex/docs/customize/keyboard-shortcuts)
+docs for the full syntax.
+
+Apply the config on the machine running the Rex server:
 
 ```sh
-rex-sessionizer --list              # sessions + discovered project directories
-rex-sessionizer --dry-run           # show what the picker would do
+rex config check
+rex config reload
 ```
+
+Then your chord floats the picker over the active window, from any pane, tab,
+or session. You can also run it from the command palette or with
+`rex do sessionizer`.
+
+Rex runs the action on the server machine. If it cannot find
+`rex-sessionizer`, put its directory on the `PATH` that the server's
+environment sees, or use the absolute path in the action:
+
+```lua
+      options = {
+        command = { "/absolute/path/to/rex-sessionizer" },
+      },
+```
+
+The action uses `rex.session.new_layer`, so the picker is a popup in the
+current window instead of a separate tab. For a dedicated window, replace
+`new_layer` with `new_window` and drop `bounds`.
+
+### 5 · Use it
+
+```sh
+rex-sessionizer                    # pick from any terminal
+rex-sessionizer ~/code/my-project  # open a project or existing session
+rex-sessionizer --list             # print sessions and projects
+```
+
+Add `--dry-run` to preview a selection without creating or switching anything.
+
+`--popup` opens the picker as a floating layer from a shell or editor binding
+inside Rex; the Rex action above already does this, so you do not need it
+there.
 
 > Session switching requires a running
 > [Rex](https://www.superlogical.com/rex/docs/) server and a Rex app client with
@@ -136,7 +206,7 @@ rex-sessionizer --dry-run           # show what the picker would do
 tmux sessionizer's long-running session commands.
 
 ```sh
-# ~/.config/rex/rex-sessionizer.conf
+# ${XDG_CONFIG_HOME:-$HOME/.config}/rex/rex-sessionizer.conf
 REX_SESSIONIZER_COMMANDS=(
   "lazygit"
   "nvim"
@@ -163,62 +233,16 @@ rex-sessionizer -s 0 -t alpha     # run in the "alpha" session instead
   matching the original behavior: one-shot panes disappear and are recreated
   the next time you run them.
 
-### Editor and Rex bindings
-
-```lua
--- Neovim, from inside a Rex terminal
-vim.keymap.set("n", "<C-f>", "<cmd>silent !rex window new picker -- rex-sessionizer<CR>")
-vim.keymap.set("n", "<M-h>", "<cmd>silent !rex-sessionizer -s 0<CR>")
-vim.keymap.set("n", "<M-t>", "<cmd>silent !rex-sessionizer -s 1<CR>")
-```
-
-## ⌨️ Rex Keybindings
-
-Bind the picker in Rex itself rather than in fish, bash, or zsh, so the same
-chord works from every pane, tab, and session. Rex reads its bindings from
-`~/.config/rex/init.lua` (or `$XDG_CONFIG_HOME/rex/init.lua`).
-
-Add this to `~/.config/rex/init.lua`:
-
-```lua
-rex.action{
-  name  = "rex_sessionizer",
-  title = "Open Rex Sessionizer",
-  run   = function()
-    rex.session.new_window{
-      layout = rex.layout.block{
-        flavor  = "com.superlogical.terminal.shell",
-        options = { command = { "sh", "-lc", "rex-sessionizer" } },
-      },
-    }
-  end,
-}
-
-rex.bind("ctrl+p", "rex_sessionizer")
-```
-
-Replace `ctrl+p` with any chord that is free. Rex uses `cmd`, `ctrl`, `alt`,
-and `shift` as modifiers; see the
-[Keyboard Shortcuts](https://www.superlogical.com/rex/docs/customize/keyboard-shortcuts)
-docs for the full key syntax and sequences.
-
-Then apply it:
-
-```sh
-rex config check     # validate init.lua (optional)
-rex config reload    # make the binding live
-```
-
-`rex config reload` only works on the machine running the Rex server. After
-that, `Ctrl+P` opens a fresh picker window from anywhere in Rex. You can also
-run the action by name from the command palette or with `rex do rex_sessionizer`.
+These commands can be bound in an editor or shell; use `-t/--target` when
+running them outside Rex.
 
 ## ⚙️ Configuration
 
 The global config is `~/.config/rex/rex-sessionizer.conf` (or
 `$XDG_CONFIG_HOME/rex/rex-sessionizer.conf`). A `rex-sessionizer.conf` in the
 directory you launch from is sourced **after** the global file, so it can
-override settings for that directory.
+override settings for that directory. Both are read on the machine where
+`rex-sessionizer` runs; with the Rex binding, that is the server machine.
 
 > **Security note:** both config files are shell scripts, so they can run
 > arbitrary commands. Only launch `rex-sessionizer` from directories you trust.
@@ -226,33 +250,10 @@ override settings for that directory.
 `REX_SESSIONIZER_SEARCH_PATHS` has no built-in default: set it in the config,
 or the picker and `--list` refuse to run.
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `REX_SESSIONIZER_SEARCH_PATHS` | **required** (no built-in default) | Directories to scan. |
-| `REX_SESSIONIZER_EXTRA_SEARCH_PATHS` | empty | Extra directories appended to the list. |
-| `REX_SESSIONIZER_MAX_DEPTH` | `1` | Default scan depth. |
-| `REX_SESSIONIZER_EXCLUDES` | `(.git)` | Directory names to prune. |
-| `REX_SESSIONIZER_INCLUDE_HIDDEN` | `0` | Include hidden directories. |
-| `REX_SESSIONIZER_FOLLOW_SYMLINKS` | `0` | Follow symlinked directories. |
-| `REX_SESSIONIZER_COMMANDS` | empty | Commands used by `-s/--session`. |
-| `REX_SESSIONIZER_CLIENT` | `$REX_CLIENT` | App client label or ID. |
-| `REX_SESSIONIZER_SERVER` | empty (Rex's `$REX_SERVER` applies) | Rex server label or address. |
-| `REX_SESSIONIZER_TARGET` | empty | Default session for `-s`. |
-| `REX_SESSIONIZER_KEEP_OPEN` | `0` | Keep panes open after their command exits. |
-| `REX_SESSIONIZER_HYDRATE` | `1` | Source `.rex-sessionizer` in new sessions. |
-| `REX_SESSIONIZER_SWITCH` | `1` | Switch the app to the selected session. |
-| `REX_SESSIONIZER_LOG` | empty | `echo`, `file`, or empty. |
-| `REX_SESSIONIZER_LOG_FILE` | `$XDG_DATA_HOME/rex-sessionizer/rex-sessionizer.log` | Log path for `LOG=file`. |
-
-Search entries can be written as `DIR:DEPTH` to override the global depth:
-
-```sh
-REX_SESSIONIZER_SEARCH_PATHS=(
-  ~/code
-  ~/work:3
-  ~/personal
-)
-```
+Every variable, its default, and the accepted search-entry syntax are
+documented in
+[`rex-sessionizer.conf.example`](rex-sessionizer.conf.example). Use it as a
+reference, or copy it over your config to start from the full set.
 
 ### Hydration
 
@@ -271,6 +272,7 @@ starting a shell prompt. Disable it with `--no-hydrate` or
 | Symptom | Check |
 | --- | --- |
 | Nothing happens after selecting a session | Is the Rex app connected with **Remote Control** on? The script prints a warning when no app client is connected. |
+| The Rex binding does nothing, or says `rex-sessionizer: command not found` | The action runs on the Rex server. Install the script there, put its directory on that machine's `PATH`, or use an absolute path in `command`. |
 | `session target ... is ambiguous` | Two sessions share a label. Rename one, or pass a full session ID. |
 | `-s` says `REX_SESSION is not set` | Run it inside a Rex terminal, or pass `-t/--target`. |
 | The picker only shows sessions | Every configured search path was missing, pruned, or hidden. Check `--list` and `REX_SESSIONIZER_INCLUDE_HIDDEN`. |

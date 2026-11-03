@@ -5,8 +5,9 @@
 # A config is required for the picker: there are no built-in search paths.
 # Set REX_SESSIONIZER_SEARCH_PATHS below to the directories you want to search.
 #
-# Copy this to ~/.config/rex/rex-sessionizer.conf, or put a
-# rex-sessionizer.conf in a project directory to override settings there.
+# Copy this to ${XDG_CONFIG_HOME:-$HOME/.config}/rex/rex-sessionizer.conf,
+# or put a rex-sessionizer.conf in a project directory to override settings
+# there. With a remote Rex server, this file belongs on the server machine.
 #
 # This file is sourced by bash, so arrays and command substitution work.
 # Only source config files from directories you trust.
@@ -22,7 +23,7 @@ REX_SESSIONIZER_SEARCH_PATHS=(
   ~/personal:2
 )
 
-# Additional search paths appended to the list above.
+# Additional search paths appended to the list above. The default is empty.
 # REX_SESSIONIZER_EXTRA_SEARCH_PATHS=(
 #   ~/work
 # )
@@ -35,6 +36,10 @@ REX_SESSIONIZER_MAX_DEPTH=1
 # to an empty array to prune nothing except hidden directories.
 # REX_SESSIONIZER_EXCLUDES=(.git node_modules target)
 
+# Rectangle for the floating picker opened by --popup, as x y w h fractions
+# of the current Rex window. The default is centered at 80% by 80%.
+# REX_SESSIONIZER_POPUP_BOUNDS=(0.1 0.1 0.8 0.8)
+
 # Hidden directories are skipped by default. Set to 1 to include them.
 # REX_SESSIONIZER_INCLUDE_HIDDEN=0
 
@@ -44,6 +49,7 @@ REX_SESSIONIZER_MAX_DEPTH=1
 
 # Commands available with -s/--session INDEX. They run through `sh -c` in the
 # current directory, in a new window or (with --vsplit/--hsplit) a split.
+# The default is an empty list, which makes -s/--session unavailable.
 REX_SESSIONIZER_COMMANDS=(
   "lazygit"
   "nvim"
@@ -56,11 +62,12 @@ REX_SESSIONIZER_COMMANDS=(
 # REX_SESSIONIZER_KEEP_OPEN=0
 
 # Rex app client to switch when more than one app is connected. Use a label
-# from `rex client ls`, or a client ID.
+# from `rex client ls`, or a client ID. The default is $REX_CLIENT.
 # REX_SESSIONIZER_CLIENT="MacBook Pro M1"
 
 # Rex server to use (host label or address), and a default target session for
 # -s. The command-line flags -S/--server and -t/--target override these.
+# Defaults: empty, so Rex's $REX_SERVER applies and no target is set.
 # REX_SESSIONIZER_SERVER="studio"
 # REX_SESSIONIZER_TARGET="alpha"
 
@@ -70,6 +77,9 @@ REX_SESSIONIZER_HYDRATE=1
 # Set to 0 to create/select sessions without switching the app.
 REX_SESSIONIZER_SWITCH=1
 
-# Logging. Values: echo, file, or empty for no logging.
+# Logging. Values: echo, file, or empty for no logging (the default).
 # REX_SESSIONIZER_LOG=file
+
+# Log path used when REX_SESSIONIZER_LOG=file. The default is
+# ${XDG_DATA_HOME:-$HOME/.local/share}/rex-sessionizer/rex-sessionizer.log.
 # REX_SESSIONIZER_LOG_FILE=${XDG_DATA_HOME:-$HOME/.local/share}/rex-sessionizer/rex-sessionizer.log
